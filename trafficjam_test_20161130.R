@@ -192,6 +192,7 @@ for (i in 1:k){
   fit.dura.12 <- lm(data = data.train, (dura.ratio^lambda-1)/lambda~speed.sd+I(speed.mean^2))
   mse[i,'fit.dura.12'] <- sum(((predict(fit.dura.12, newdata = data.test)*lambda+1)^(1/lambda)-data.test$dura.ratio)^2)/nrow(data.test)
 }
+mse.mean <- colMeans(mse)
 
 #selected model:
 #m.ratio~mean+sd+sd^2
