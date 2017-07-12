@@ -250,16 +250,37 @@ save(fit.m,fit.dura,lambda.m,lambda.dura, file='F:/data/江西人保/speed_cal/fits_
 
 
 
+
+library(ggplot2)
+ggplot(user.data.train, aes(m.ratio)) + geom_histogram(binwidth = 1, fill = 'steelblue', color = 'white')
+ggplot(user.data.train, aes(dura.ratio)) + geom_histogram(binwidth = 1, fill = 'steelblue', color = 'white')
+
 library(plotly)
-p <- plot_ly(data = user.data, x = ~speed.mean, y = ~m.ratio, type = 'scatter', 
+p <- plot_ly(data = user.data.train, x = ~speed.mean, y = ~m.ratio, type = 'scatter', 
              mode = 'markers', name = '拥堵里程比例', alpha = 0.5) %>% 
   add_trace(y = ~dura.ratio, name = '拥堵时间比例', mode = 'markers', alpha = 0.5)
-p.1 <- plot_ly(data = user.data, x = ~speed.sd, y = ~m.ratio, type = 'scatter', 
+p.1 <- plot_ly(data = user.data.train, x = ~speed.sd, y = ~m.ratio, type = 'scatter', 
                mode = 'markers', name = '拥堵里程比例', alpha = 0.5) %>% 
   add_trace(y = ~dura.ratio, name = '拥堵时间比例', mode = 'markers', alpha = 0.5)
 
+
+user.data.train$m.predict <- (predict(fit.m, newdata = user.data.train)*lambda.m+1)^(1/lambda.m)
+user.data.train$dura.predict <- (predict(fit.dura, newdata = user.data.train)*lambda.dura+1)^(1/lambda.dura)
+p.3 <- plot_ly(data = user.data.train, x = ~dura.ratio, y = ~m.ratio, type = 'scatter', 
+               mode = 'markers', name = '测试数据', alpha = 0.5) %>% 
+  add_trace(x = ~dura.predict, y = ~m.predict, name = '预测结果', mode = 'markers', alpha = 0.5) %>% 
+  layout(legend = list(x = 0.1, y = 0.9), xaxis = list(title = '时长比例'), yaxis = list(title = '里程比例'))
+p.4 <- plot_ly(data = user.test, x = ~dura.ratio, y = ~m.ratio, type = 'scatter', 
+               mode = 'markers', name = '测试数据', alpha = 0.5) %>% 
+  add_trace(x = ~dura.predict, y = ~m.predict, name = '预测结果', mode = 'markers', alpha = 0.5)
+
+ 
+p.8 <- plot_ly(data = user.data, alpha = 0.6) %>% 
+  add_histogram(x = ~m.ratio, binwidth = 1, name = 'm.ratio') %>%
+  add_histogram(x = ~dura.ratio, binwidth = 1, name = 'dura.ratio') %>%
+  layout(barmode = "overlay")
 p.9 <- plot_ly(data = user.data.train, alpha = 0.6) %>% 
-  add_histogram(x = ~m.ratio, name = 'm.ratio') %>%
-  add_histogram(x = ~dura.ratio, name = 'dura.ratio') %>%
+  add_histogram(x = ~m.ratio, binwidth = 1, name = 'm.ratio') %>%
+  add_histogram(x = ~dura.ratio, binwidth = 1, name = 'dura.ratio') %>%
   layout(barmode = "overlay")
 
