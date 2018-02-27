@@ -1,17 +1,26 @@
+# It's too computationally expensive to compute traffic jam duration and mileage for each user. So we apply machine learning algorithm to estimate traffic jam
+# duration and mileage using mean and standard deviation of speed for each trip. The overall process constains of three steps:
+# 1. Merge overall mean and sd from mean and sd of speed for each trip;
+# 2. Cross-Validation for model selection;
+# 3. Test the simple model.
+
+
 rm(list=ls())
-root.path <- 'F:/data/½­Î÷ÈË±£/speed_cal/m_dura_with_sd'
+root.path <- 'F:/data/æ±Ÿè¥¿äººä¿/speed_cal/m_dura_with_sd'
 setwd(root.path)
 filelist <- list.files(root.path, pattern="*.csv")
 datalist <- lapply(filelist, function(x) read.csv(x, header=T, sep=','))
 trip.statistics <- do.call("rbind", datalist)
 trip.statistics <- trip.statistics[trip.statistics$m>0,]
 
+## Valid trip filter.
 trip.statistics <- trip.statistics[60*trip.statistics$m/(trip.statistics$dura*trip.statistics$speed.mean)<=1.5,]
 
+## Merge overall sd from trip sd and mean using parallel computing in Windows.
 sd.merge <- function(dura.sd){
   ###
-  #º¯ÊıÓÃÓÚ¼ÆËã¶à¶ÎĞĞ³ÌËÙ¶È±ê×¼²îÖ®¼ä×ÜµÄ±ê×¼²î
-  #ÊäÈë×Ö¶ÎÎª°üº¬dura,speed.mean,sdÈı¸ö×Ö¶ÎµÄDF
+  #å‡½æ•°ç”¨äºè®¡ç®—å¤šæ®µè¡Œç¨‹é€Ÿåº¦æ ‡å‡†å·®ä¹‹é—´æ€»çš„æ ‡å‡†å·®
+  #è¾“å…¥å­—æ®µä¸ºåŒ…å«dura,speed.mean,sdä¸‰ä¸ªå­—æ®µçš„DF
   ###
   names(dura.sd) <- c('dura','mean','sd')
   n <- nrow(dura.sd)
@@ -58,7 +67,7 @@ user.data$speed.20 <- 60*user.data$m.20/user.data$dura.20
 user.data.train <- user.data[which(user.data$speed.20<20 & user.data$m.ratio<user.data$dura.ratio),]
 
 
-##Cross-Validation for Model Selection
+## Cross-Validation for Model Selection
 k <- 10
 sample.size <- floor(nrow(user.data.train)/k)
 sample.label <- matrix(sample(1:nrow(user.data.train))[1:(k*sample.size)], 
@@ -208,7 +217,7 @@ fit.dura <- lm(data = user.data.train, (dura.ratio^lambda.dura-1)/lambda.dura~sp
 
 
 ##prepare the test data
-root.path.test <- 'F:/data/½­Î÷ÈË±£/speed_cal/data_test'
+root.path.test <- 'F:/data/æ±Ÿè¥¿äººä¿/speed_cal/data_test'
 setwd(root.path.test)
 filelist.test <- list.files(root.path.test, pattern="*.csv")
 datalist.test <- lapply(filelist.test, function(x) read.csv(x, header=T, sep=','))
@@ -245,42 +254,52 @@ sum(((predict(fit.m, newdata = user.test)*lambda.m+1)^(1/lambda.m)-user.test$m.r
 sum(((predict(fit.dura, newdata = user.test)*lambda.dura+1)^(1/lambda.dura)-user.test$dura.ratio)^2)/nrow(user.test)
 
 
-save(fit.m,fit.dura,lambda.m,lambda.dura, file='F:/data/½­Î÷ÈË±£/speed_cal/fits_traffic.Rdata')
+## Save the model and parameters.
+save(fit.m,fit.dura,lambda.m,lambda.dura, file='F:/data/æ±Ÿè¥¿äººä¿/speed_cal/fits_traffic.Rdata')
 
 
 
 
-
+## Some plot of the data
+setwd('../pictures/')
 library(ggplot2)
 ggplot(user.data.train, aes(m.ratio)) + geom_histogram(binwidth = 1, fill = 'steelblue', color = 'white')
+ggsave(filename = 'æ‹¥å µé‡Œç¨‹æ¯”ä¾‹åˆ†å¸ƒ.png')
 ggplot(user.data.train, aes(dura.ratio)) + geom_histogram(binwidth = 1, fill = 'steelblue', color = 'white')
+ggsave(filename = 'æ‹¥å µæ—¶é•¿æ¯”ä¾‹åˆ†å¸ƒ.png')
 
 library(plotly)
 p <- plot_ly(data = user.data.train, x = ~speed.mean, y = ~m.ratio, type = 'scatter', 
-             mode = 'markers', name = 'Óµ¶ÂÀï³Ì±ÈÀı', alpha = 0.5) %>% 
-  add_trace(y = ~dura.ratio, name = 'Óµ¶ÂÊ±¼ä±ÈÀı', mode = 'markers', alpha = 0.5)
-p.1 <- plot_ly(data = user.data.train, x = ~speed.sd, y = ~m.ratio, type = 'scatter', 
-               mode = 'markers', name = 'Óµ¶ÂÀï³Ì±ÈÀı', alpha = 0.5) %>% 
-  add_trace(y = ~dura.ratio, name = 'Óµ¶ÂÊ±¼ä±ÈÀı', mode = 'markers', alpha = 0.5)
+             mode = 'markers', name = 'æ‹¥å µé‡Œç¨‹æ¯”ä¾‹', alpha = 0.5) %>% 
+  add_trace(y = ~dura.ratio, name = 'æ‹¥å µæ—¶é—´æ¯”ä¾‹', mode = 'markers', alpha = 0.5)%>% 
+  layout(legend = list(x = 0.8, y = 0.9), xaxis = list(title = 'å¹³å‡é€Ÿåº¦'), yaxis = list(title = 'æ¯”ä¾‹'))
+export(p, "æ‹¥å µæ—¶é•¿&é‡Œç¨‹VSé€Ÿåº¦å¹³å‡å€¼.png")
 
+p.1 <- plot_ly(data = user.data.train, x = ~speed.sd, y = ~m.ratio, type = 'scatter', 
+               mode = 'markers', name = 'æ‹¥å µé‡Œç¨‹æ¯”ä¾‹', alpha = 0.5) %>% 
+  add_trace(y = ~dura.ratio, name = 'æ‹¥å µæ—¶é—´æ¯”ä¾‹', mode = 'markers', alpha = 0.5)%>% 
+  layout(legend = list(x = 0.8, y = 0.9), xaxis = list(title = 'é€Ÿåº¦æ ‡å‡†å·®'), yaxis = list(title = 'æ¯”ä¾‹'))
+export(p.1, "æ‹¥å µæ—¶é•¿&é‡Œç¨‹VSé€Ÿåº¦æ ‡å‡†å·®.png")
 
 user.data.train$m.predict <- (predict(fit.m, newdata = user.data.train)*lambda.m+1)^(1/lambda.m)
 user.data.train$dura.predict <- (predict(fit.dura, newdata = user.data.train)*lambda.dura+1)^(1/lambda.dura)
 p.3 <- plot_ly(data = user.data.train, x = ~dura.ratio, y = ~m.ratio, type = 'scatter', 
-               mode = 'markers', name = '²âÊÔÊı¾İ', alpha = 0.5) %>% 
-  add_trace(x = ~dura.predict, y = ~m.predict, name = 'Ô¤²â½á¹û', mode = 'markers', alpha = 0.5) %>% 
-  layout(legend = list(x = 0.1, y = 0.9), xaxis = list(title = 'Ê±³¤±ÈÀı'), yaxis = list(title = 'Àï³Ì±ÈÀı'))
+               mode = 'markers', name = 'è®­ç»ƒæ•°æ®', alpha = 0.5) %>% 
+  add_trace(x = ~dura.predict, y = ~m.predict, name = 'é¢„æµ‹ç»“æœ', mode = 'markers', alpha = 0.5) %>% 
+  layout(legend = list(x = 0.1, y = 0.9), xaxis = list(title = 'æ—¶é•¿æ¯”ä¾‹'), yaxis = list(title = 'é‡Œç¨‹æ¯”ä¾‹'))
+export(p.3, "è®­ç»ƒé›†groundtruth&é¢„æµ‹å€¼.png")
+
 p.4 <- plot_ly(data = user.test, x = ~dura.ratio, y = ~m.ratio, type = 'scatter', 
-               mode = 'markers', name = '²âÊÔÊı¾İ', alpha = 0.5) %>% 
-  add_trace(x = ~dura.predict, y = ~m.predict, name = 'Ô¤²â½á¹û', mode = 'markers', alpha = 0.5)
+               mode = 'markers', name = 'æµ‹è¯•æ•°æ®', alpha = 0.5) %>% 
+  add_trace(x = ~dura.predict, y = ~m.predict, name = 'é¢„æµ‹ç»“æœ', mode = 'markers', alpha = 0.5)%>% 
+  layout(legend = list(x = 0.1, y = 0.9), xaxis = list(title = 'æ—¶é•¿æ¯”ä¾‹'), yaxis = list(title = 'é‡Œç¨‹æ¯”ä¾‹'))
+export(p.4, "æµ‹è¯•é›†groundtruth&é¢„æµ‹å€¼.png")
+
 
  
 p.8 <- plot_ly(data = user.data, alpha = 0.6) %>% 
-  add_histogram(x = ~m.ratio, binwidth = 1, name = 'm.ratio') %>%
-  add_histogram(x = ~dura.ratio, binwidth = 1, name = 'dura.ratio') %>%
-  layout(barmode = "overlay")
-p.9 <- plot_ly(data = user.data.train, alpha = 0.6) %>% 
-  add_histogram(x = ~m.ratio, binwidth = 1, name = 'm.ratio') %>%
-  add_histogram(x = ~dura.ratio, binwidth = 1, name = 'dura.ratio') %>%
-  layout(barmode = "overlay")
+  add_histogram(x = ~m.ratio, binwidth = 1, name = 'æ‹¥å µé‡Œç¨‹æ¯”ä¾‹') %>%
+  add_histogram(x = ~dura.ratio, binwidth = 1, name = 'æ‹¥å µæ—¶é•¿æ¯”ä¾‹') %>%
+  layout(barmode = "overlay", legend = list(x = 0.8, y = 0.9), xaxis = list(title = 'æ¯”ä¾‹'))
+export(p.8, "æ‹¥å µé‡Œç¨‹&æ—¶é•¿åˆ†å¸ƒ.png")
 
